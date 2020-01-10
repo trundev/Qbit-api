@@ -1,0 +1,13 @@
+{
+    "name": "Qbit-api",
+    "version": "1.0.0",
+    "description": "Qbit robot C++ control interface, based on https://github.com/LOBOT-ROBOT/Qbit",
+    "license": "MIT",
+    "dependencies": {
+    },
+    "extraIncludes": [
+      "inc"
+    ],
+    "targetDependencies": {}
+  }
+  
