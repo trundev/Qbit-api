@@ -10,18 +10,13 @@ namespace qbit
 {
 
 static QbitRGBLight::LHQbitRGBLight *lhRGBLight = NULL;
+static bool obstacleSensor1 = false;
+static bool obstacleSensor2 = false;
+static int currentVoltage = 0;
+static bool versionFlag = false; 
+static int readTimes = 0;
 
-/**
-* Initialize RGB
-*/
-static void initRGBLight()
-{
-    if (NULL == lhRGBLight)
-    {
-        lhRGBLight = QbitRGBLight::create(MICROBIT_PIN_P15, 2, QbitRGBLight::RGB);
-    }
-    clearLight();
-}
+static void initRGBLight();
 
 
 /**
@@ -111,6 +106,18 @@ bool obstacleSensor(ObstacleSensor sensor)
 }
 
 /**
+* Initialize RGB
+*/
+static void initRGBLight()
+{
+    if (NULL == lhRGBLight)
+    {
+        lhRGBLight = QbitRGBLight::create(MICROBIT_PIN_P15, 2, QbitRGBLight::RGB);
+    }
+    clearLight();
+}
+
+/**
 * Set the brightness of the strip. This flag only applies to future operation.
 * @param brightness a measure of LED brightness in 0-255. eg: 255
 */
@@ -118,7 +125,8 @@ bool obstacleSensor(ObstacleSensor sensor)
 //% weight=84
 void setBrightness(int brightness)
 {
-    ;//TODO:
+    if (lhRGBLight)
+        lhRGBLight->setBrightness(brightness);
 }
 
 /**
@@ -127,7 +135,8 @@ void setBrightness(int brightness)
 //% weight=82 blockId=setPixelRGB block="Set|%lightoffset|color to %rgb"
 void setPixelRGB(QbitRGBLight::Lights lightoffset, QbitRGBLight::QbitRGBColors rgb)
 {
-    ;//TODO:
+    if (lhRGBLight)
+        lhRGBLight->setPixelColor(lightoffset, rgb, versionFlag);
 }
 
 /**
@@ -136,7 +145,8 @@ void setPixelRGB(QbitRGBLight::Lights lightoffset, QbitRGBLight::QbitRGBColors r
 //% weight=80 blockId=setPixelRGBArgs block="Set|%lightoffset|color to %rgb"
 void setPixelRGBArgs(QbitRGBLight::Lights lightoffset, int rgb)
 {
-    ;//TODO:
+    if (lhRGBLight)
+        lhRGBLight->setPixelColor(lightoffset, (QbitRGBLight::QbitRGBColors)rgb, versionFlag);
 }
 
 /**
@@ -145,7 +155,8 @@ void setPixelRGBArgs(QbitRGBLight::Lights lightoffset, int rgb)
 //% weight=78 blockId=showLight block="Show light"
 void showLight()
 {
-    ;//TODO:
+    if (lhRGBLight)
+        lhRGBLight->show();
 }
 
 /**
@@ -154,7 +165,8 @@ void showLight()
 //% weight=76 blockGap=50 blockId=clearLight block="Clear light"
 void clearLight()
 {
-    ;//TODO:
+    if (lhRGBLight)
+        lhRGBLight->clear();
 }
 
 /**

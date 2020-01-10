@@ -78,9 +78,12 @@ public:
 
     void setPixelColor(int pixeloffset, QbitRGBColors rgb, bool flag);
 
+    void show();
+    void clear();
+
 private:
     void setPixelRGB(int pixeloffset, QbitRGBColors rgb, bool flag);
-    void setBufferRGB(int offset, int red, int green, int blue);
+    void setBufferRGB(int offset, uint32_t red, uint32_t green, uint32_t blue);
 };
 
 LHQbitRGBLight *create(PinName pin, int numleds, QbitRGBPixelMode mode);
