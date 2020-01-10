@@ -3,10 +3,26 @@
 *
 * Based on: https://github.com/LOBOT-ROBOT/Qbit
 */
+#include "MicroBitPin.h"
 #include "Qbit-api.h"
 
 namespace qbit
 {
+
+static QbitRGBLight::LHQbitRGBLight *lhRGBLight = NULL;
+
+/**
+* Initialize RGB
+*/
+static void initRGBLight()
+{
+    if (NULL == lhRGBLight)
+    {
+        lhRGBLight = QbitRGBLight::create(MICROBIT_PIN_P15, 2, QbitRGBLight::RGB);
+    }
+    clearLight();
+}
+
 
 /**
 * Qbit initialization, please execute at boot time
@@ -14,6 +30,7 @@ namespace qbit
 //% weight=100 blockId=qbitInit block="Initialize Qbit"
 void qbitInit()
 {
+    initRGBLight();
     ;//TODO:
 }
 

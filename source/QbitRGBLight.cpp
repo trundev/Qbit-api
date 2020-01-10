@@ -9,10 +9,12 @@ namespace qbit
 namespace QbitRGBLight
 {
 
-//% shim=sendBufferAsm
-//% parts="QbitRGBLight"
-void sendBuffer(PacketBuffer buf, MicroBitPin pin)
+extern "C" void sendBufferAsm(const void*, size_t len, DigitalOut *pin);
+
+void sendBuffer(PacketBuffer buf, PinName pin)
 {
+    DigitalOut hwpin(pin);
+    sendBufferAsm(buf.getBytes(), buf.length(), &hwpin);
 }
 
 /**
@@ -23,7 +25,7 @@ void LHQbitRGBLight::setBrightness(int brightness)
     ;//TODO:
 }
 
-void LHQbitRGBLight::setPin(MicroBitPin pin)
+void LHQbitRGBLight::setPin(PinName pin)
 {
     ;//TODO:
 }
@@ -33,7 +35,7 @@ void LHQbitRGBLight::setPixelColor(int pixeloffset, QbitRGBColors rgb, bool flag
     ;//TODO:
 }
 
-LHQbitRGBLight create(MicroBitPin pin, int numleds, QbitRGBPixelMode mode)
+LHQbitRGBLight *create(PinName pin, int numleds, QbitRGBPixelMode mode)
 {
     ;//TODO:
 }

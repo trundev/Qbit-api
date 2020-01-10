@@ -4,7 +4,6 @@
 #ifndef _QBITRGBLIGHT_
 #define _QBITRGBLIGHT_
 
-#include "MicroBitPin.h"
 #include "PacketBuffer.h"
 
 namespace qbit
@@ -57,9 +56,7 @@ enum QbitRGBPixelMode {
 * QbitRGBLight Functions
 */
 
-//% shim=sendBufferAsm
-//% parts="QbitRGBLight"
-void sendBuffer(PacketBuffer buf, MicroBitPin pin);
+void sendBuffer(PacketBuffer buf, PinName pin);
 
 /**
 * A LHQbitRGBLight class
@@ -68,7 +65,7 @@ class LHQbitRGBLight
 {
 public:
     PacketBuffer buf;
-    MicroBitPin pin;
+    PinName pin;
     // TODO: encode as bytes instead of 32bit
     int brightness;
     int start; // start offset in LED strip
@@ -77,7 +74,7 @@ public:
 
     void setBrightness(int brightness);
 
-    void setPin(MicroBitPin pin);
+    void setPin(PinName pin);
 
     void setPixelColor(int pixeloffset, QbitRGBColors rgb, bool flag);
 
@@ -86,7 +83,7 @@ private:
     void setBufferRGB(int offset, int red, int green, int blue);
 };
 
-LHQbitRGBLight create(MicroBitPin pin, int numleds, QbitRGBPixelMode mode);
+LHQbitRGBLight *create(PinName pin, int numleds, QbitRGBPixelMode mode);
 
 }   // qbit::QbitRGBLight
 
