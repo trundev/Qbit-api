@@ -7,6 +7,8 @@
 #include "MicroBitMessageBus.h"
 #include "MicroBitSerial.h"
 #include "MicroBitIO.h"
+#include "MicroBitFiber.h"
+#include "MicroBitSystemTimer.h"
 #include "Qbit-api.h"
 
 namespace qbit
@@ -22,9 +24,19 @@ static bool obstacleSensor1 = false;
 static bool obstacleSensor2 = false;
 static int currentVoltage = 0;
 static bool versionFlag = false;
-static int readTimes = 0;
+
+#define MESSAGE_HEAD        0xff
+#define MESSAGE_HEAD_STOP   0x101
+
+int adress = 0;
+bool sendFlag = false;
 
 static void initRGBLight();
+static void onSerialDelimMatch(MicroBitEvent event);
+static void sendVersionCmd();
+int findIndexof(const ManagedString &src, const char *strFind, int startIndex);
+int strToNumber(const ManagedString &str);
+int decStrToNumber(const ManagedString &str);
 
 
 /**
@@ -37,7 +49,22 @@ void qbitInit(MicroBitMessageBus *bus, MicroBitSerial *serial, MicroBitIO *io)
     uBit_serial = serial;
     uBit_io = io;
     initRGBLight();
-    ;//TODO:
+    if (uBit_messageBus && uBit_serial)
+    {
+        uBit_serial->baud(115200);  // This is the default baud-rate
+        uBit_serial->redirect(MICROBIT_PIN_P12, MICROBIT_PIN_P8);
+        uBit_serial->eventOn("$");
+        uBit_messageBus->listen(MICROBIT_ID_SERIAL, MICROBIT_SERIAL_EVT_DELIM_MATCH, onSerialDelimMatch);
+    }
+
+    fiber_sleep(1200);
+    int readTimes = 0;
+    while(readTimes < 10 && !versionFlag)
+    {
+        readTimes++;
+        sendVersionCmd();
+        fiber_sleep(30);
+    }
 }
 
 /**
@@ -46,7 +73,71 @@ void qbitInit(MicroBitMessageBus *bus, MicroBitSerial *serial, MicroBitIO *io)
 //% weight=99 blockId=qbit_carrier block="Set Qbit carrier mode"
 void qbit_carrier()
 {
+    uint8_t buf[] =
+    {
+        0x55,
+        0x55,
+        0x04,
+        0x3B,//cmd type
+        0x0,
+        0x0,
+    };
+    if (uBit_serial)
+        uBit_serial->send(buf, sizeof(buf), ASYNC);
+}
+
+static void sendVersionCmd()
+{
+    uint8_t buf[] =
+    {
+        0x55,
+        0x55,
+        0x02,
+        0x12,//cmd type
+    };
+    if (uBit_serial)
+        uBit_serial->send(buf, sizeof(buf), ASYNC);
+}
+
+/**
+* Get the handle command.
+*/
+static void onSerialDelimMatch(MicroBitEvent event)
+{
+    static ManagedString handleCmd;
+
+    ManagedString charStr = uBit_serial->read(MICROBIT_SERIAL_DEFAULT_BUFFER_SIZE, ASYNC);
+    handleCmd = handleCmd + charStr;
     ;//TODO:
+}
+
+int findIndexof(const ManagedString &src, const char *strFind, int startIndex)
+{
+    if (src.length() < startIndex)
+        return -1;
+    const char *data = src.toCharArray();
+    const char *res = strstr(data + startIndex, strFind);
+    if (res)
+        return res - data;
+    return -1;
+}
+
+int strToNumber(const ManagedString &str)
+{
+    char *endptr = NULL;
+    int res = strtol(str.toCharArray(), &endptr, 16);
+    if (endptr && *endptr == 0)     // All symbols are numerical
+        return res;
+    return -1;
+}
+
+int decStrToNumber(const ManagedString &str)
+{
+    char *endptr = NULL;
+    int res = strtol(str.toCharArray(), &endptr, 10);
+    if (endptr && *endptr == 0)     // All symbols are numerical
+        return res;
+    return -1;
 }
 
 /**
@@ -56,7 +147,20 @@ void qbit_carrier()
 //% speed.min=0 speed.max=100
 void setQbitRunSpeed(int speed, OrientionType oriention)
 {
-    ;//TODO:
+    if (speed> 100 || speed < 0) {
+        return;
+    }
+    uint8_t buf[] =
+    {
+        0x55,
+        0x55,
+        0x04,
+        0x32,//cmd type
+        speed,
+        oriention,
+    };
+    if (uBit_serial)
+        uBit_serial->send(buf, sizeof(buf), ASYNC);
 }
 
 /**
@@ -65,7 +169,16 @@ void setQbitRunSpeed(int speed, OrientionType oriention)
 //% weight=96 blockId=setBLAngle block="Set the center balance angle of the Qbit"
 void setBLAngle()
 {
-    ;//TODO:
+    uint8_t buf[] =
+    {
+        0x55,
+        0x55,
+        0x03,
+        61,//cmd type
+        0,
+    };
+    if (uBit_serial)
+        uBit_serial->send(buf, sizeof(buf), ASYNC);
 }
 
 /**
@@ -91,13 +204,63 @@ void onQbit_remote_no_ir(void (*body)(MicroBitEvent))
         uBit_messageBus->listen(MESSAGE_HEAD_STOP, 0, body);
 }
 
+// Our version of pulseIn() from pxt-microbit/libs/core/pins.cpp:
+// https://github.com/microsoft/pxt-microbit/blob/912d4d95daa8b6f5f6f853433d781db162f719eb/libs/core/pins.cpp#L231-L261
+static int pulseIn(MicroBitPin *pin, bool low_value, int maxDuration = 2000000)
+{
+    if (!pin) return 0;
+
+    int pulse = low_value == false ? 1 : 0;
+    uint64_t tick =  system_timer_current_time_us();
+    uint64_t maxd = (uint64_t)maxDuration;
+    while(pin->getDigitalValue() != pulse) {
+        if(system_timer_current_time_us() - tick > maxd)
+            return 0;
+    }
+
+    uint64_t start =  system_timer_current_time_us();
+    while(pin->getDigitalValue() == pulse) {
+        if(system_timer_current_time_us() - tick > maxd)
+            return 0;
+    }
+    uint64_t end =  system_timer_current_time_us();
+    return end - start;
+}
+
 /**
 * Obtain the distance of ultrasonic detection to the obstacle
 */
 //% weight=93 blockId=Ultrasonic block="Ultrasonic distance(cm)"
 int Ultrasonic()
 {
-    ;//TODO:
+    static int distanceBak = 0;
+    if (NULL == uBit_io)
+        return distanceBak;
+
+    //init pins
+    MicroBitPin &echoPin = uBit_io->P13;
+    MicroBitPin &trigPin = uBit_io->P14;
+    int distance = 0;
+    echoPin.setPull(PullNone);
+    trigPin.setPull(PullNone);
+
+    // send pulse
+    trigPin.setDigitalValue(0);
+    wait_us(5);
+    trigPin.setDigitalValue(1);
+    wait_us(10);
+    trigPin.setDigitalValue(0);
+    wait_us(5);
+    // read pulse
+    int d = pulseIn(&echoPin, false, 11600);
+    distance = d;
+    // filter timeout spikes
+    if (distance == 0 || distance >= 13920) {
+        distance = distanceBak;
+    }
+    else
+        distanceBak = d;
+    return (distance * 10 + 6 * 58 / 2) / 6 / 58;   // Math.round()
 }
 
 /**
@@ -106,7 +269,16 @@ int Ultrasonic()
 //% weight=90 blockId=setQbitRun block="Set Qbit balance %runType"
 void setQbitRun(QbitRunType runType)
 {
-    ;//TODO:
+    uint8_t buf[] =
+    {
+        0x55,
+        0x55,
+        0x03,
+        0x3C,//cmd type
+        runType,
+    };
+    if (uBit_serial)
+        uBit_serial->send(buf, sizeof(buf), ASYNC);
 }
 
 /**
@@ -115,7 +287,14 @@ void setQbitRun(QbitRunType runType)
 //% weight=86 blockGap=50  blockId=obstacleSensor block="avoid obstacle|%sensor|detect obstacle"
 bool obstacleSensor(ObstacleSensor sensor)
 {
-    ;//TODO:
+    if (sensor == SENSOR1_OBSTACLE)
+    {
+        return obstacleSensor1;
+    }
+    else
+    {
+        return obstacleSensor2;
+    }
 }
 
 /**
@@ -188,7 +367,17 @@ void clearLight()
 //% weight=70 blockId=setExtsIO block="Set extension pin|%ext|%iostatus"
 void setExtsIO(Exts ext, pinIOStatus iostatus)
 {
-    ;//TODO:
+    if (NULL == uBit_io)
+        return;
+
+    if (ext == Exts_Ext1)
+    {
+        uBit_io->P2.setDigitalValue(iostatus);
+    }
+    else if (ext == Exts_Ext2)
+    {
+        uBit_io->P16.setDigitalValue( iostatus);
+    }
 }
 
 /**
@@ -197,7 +386,26 @@ void setExtsIO(Exts ext, pinIOStatus iostatus)
 //% weight=68 blockId=readExtsIODigital block="Read extension pin|%ext|digital"
 bool readExtsIODigital(Exts ext)
 {
-    ;//TODO:
+    if (NULL == uBit_io)
+        return false;
+
+    int status = 0;
+    if (ext == Exts_Ext1)
+    {
+        status = uBit_io->P2.getDigitalValue();
+    }
+    else if (ext == Exts_Ext2)
+    {
+        status = uBit_io->P16.getDigitalValue();
+    }
+    if(status == 0)
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 /**
@@ -206,7 +414,10 @@ bool readExtsIODigital(Exts ext)
 //% weight=66 blockGap=50 blockId=readExt1Analog block="Read extension 1 pin analog"
 int readExt1Analog()
 {
-    ;//TODO:
+    if (NULL == uBit_io)
+        return 0;
+
+    return uBit_io->P2.getAnalogValue();
 }
 
 /**
@@ -215,7 +426,7 @@ int readExt1Analog()
 //% weight=64 blockId=getBatVoltage block="Get Qbit current voltage (mV)"
 int getBatVoltage()
 {
-    ;//TODO:
+    return currentVoltage;
 }
 
 /**
@@ -225,7 +436,26 @@ int getBatVoltage()
 //% subcategory=Bluetooth
 int analyzeBluetoothCmd(ManagedString str)
 {
-    ;//TODO:
+    if (str.length() > 6) {
+        ManagedString cmdHead = str.substring(0, 3);
+
+        if (cmdHead == "CMD") {
+            ManagedString cmdTypeStr = str.substring(4, 2);
+            int cmdType = strToNumber(cmdTypeStr);
+            if (cmdType > CmdType_VERSION || cmdType < 0) {
+                return CmdType_NO_COMMAND;
+            }
+            else {
+                return cmdType;
+            }
+        }
+        else {
+            return CmdType_NO_COMMAND;
+        }
+    }
+    else {
+        return CmdType_NO_COMMAND;
+    }
 }
 
 /**
@@ -236,7 +466,41 @@ int analyzeBluetoothCmd(ManagedString str)
 //% subcategory=Bluetooth
 int getArgs(ManagedString str, int index)
 {
-    ;//TODO:
+    CmdType cmdType = (CmdType)analyzeBluetoothCmd(str);
+    if (cmdType == CmdType_NO_COMMAND)
+    {
+        return RunCmdType_COMMAND_ERRO;
+    }
+    else {
+        int dataIndex = 7;
+        int subLegth = 2;
+        if (index == 2)
+        {
+            dataIndex = 10;
+            subLegth = 4;
+        }
+        else if (index == 3)
+        {
+            dataIndex = 15;
+            subLegth = 4;
+        }
+        if (cmdType == CmdType_SERVO)
+        {
+            if (str.length() < 19)
+            {
+                return CmdType_NO_COMMAND;
+            }
+        }
+        if ((index == 1 && str.length() < 10)||(index == 2 && str.length() < 15)||(index == 3 && str.length() < 19))
+        {
+            return 0;
+        }
+        ManagedString strArgs = str.substring(dataIndex, subLegth);
+        int arg = strToNumber(strArgs);
+        if (arg == -1)
+            return 0;
+        return arg;
+    }
 }
 
 /**
@@ -246,7 +510,7 @@ int getArgs(ManagedString str, int index)
 //% subcategory=Bluetooth
 int getBluetoothCmdtype(CmdType type)
 {
-    ;//TODO:
+    return (int)type;
 }
 
 /**
@@ -256,7 +520,7 @@ int getBluetoothCmdtype(CmdType type)
 //% subcategory=Bluetooth
 int getRunCarType(CarRunCmdType type)
 {
-    ;//TODO:
+    return (int)type;
 }
 
 /**
@@ -266,7 +530,10 @@ int getRunCarType(CarRunCmdType type)
 //% subcategory=Bluetooth
 ManagedString convertUltrasonic(int data)
 {
-    ;//TODO:
+    ManagedString cmdStr("CMD|03|");
+    cmdStr = cmdStr + ManagedString(data);
+    cmdStr = cmdStr + "|$";
+    return cmdStr;
 }
 
 /**
@@ -276,7 +543,10 @@ ManagedString convertUltrasonic(int data)
 //% subcategory=Bluetooth
 ManagedString convertTemperature(int data)
 {
-    ;//TODO:
+    ManagedString cmdStr("CMD|04|");
+    cmdStr = cmdStr + ManagedString(data);
+    cmdStr = cmdStr + "|$";
+    return cmdStr;
 }
 
 /**
@@ -286,7 +556,10 @@ ManagedString convertTemperature(int data)
 //% subcategory=Bluetooth
 ManagedString convertLight(int data)
 {
-    ;//TODO:
+    ManagedString cmdStr("CMD|06|");
+    cmdStr = cmdStr + ManagedString(data);
+    cmdStr = cmdStr + "|$";
+    return cmdStr;
 }
 
 /**
@@ -296,7 +569,10 @@ ManagedString convertLight(int data)
 //% subcategory=Bluetooth
 ManagedString convertBattery(int data)
 {
-    ;//TODO:
+    ManagedString cmdStr("CMD|07|");
+    cmdStr = cmdStr + ManagedString(data);
+    cmdStr = cmdStr + "|$";
+    return cmdStr;
 }
 
 }   // qbit
