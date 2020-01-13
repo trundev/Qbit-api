@@ -11,6 +11,10 @@
 
 #include "QbitRGBLight.h"
 
+class MicroBitMessageBus;
+class MicroBitSerial;
+class MicroBitIO;
+
 namespace qbit
 {
 
@@ -24,7 +28,7 @@ enum Colors {
     //% blockId="White" block="White"
     White = 0x04,
     //% blockId="Black" block="Black"
-    Black = 0x05	
+    Black = 0x05
 };
 
 enum ObstacleSensor {
@@ -38,7 +42,7 @@ enum QbitRunType {
     //% block="Stop"
     RunType_STOP = 0x00,
     //% block="Run"
-    RunType_RUN = 0x01	
+    RunType_RUN = 0x01
 };
 
 enum Exts {
@@ -47,7 +51,7 @@ enum Exts {
     //% block="Ext 2"
     Exts_Ext2 = 0x01
 };
-    
+
 enum pinIOStatus {
     //% block="LOW"
     pinIOStatus_Low = 0x00,
@@ -100,7 +104,7 @@ enum CarRunCmdType {
     //% block="Invalid command"
     RunCmdType_COMMAND_ERRO
 };
-     
+
 enum OrientionType {
     //% block="Stop"
     OrientionType_STOP = 0,
@@ -144,21 +148,21 @@ enum IRKEY {
     //% block="C"
     C = 0x4C,
     //% block="D"
-    D = 0xCC,     
+    D = 0xCC,
     //% block="E"
-    E = 0xAC,   
+    E = 0xAC,
     //% block="F"
-    F = 0x5C,   
+    F = 0x5C,
     //% block="UP"
     UP = 0X2C,
     //% block="DOWN"
-    DOWN = 0X9C,  
+    DOWN = 0X9C,
     //% block="LEFT"
     LEFT = 0X6C,
     //% block="RIGHT"
-    RIGHT = 0X1C, 
+    RIGHT = 0X1C,
     //% block="SET"
-    SET = 0XEC, 
+    SET = 0XEC,
     //% block="R0"
     R0 = 104,
     //% block="R1"
@@ -175,7 +179,7 @@ enum IRKEY {
     R6=90,
     //% block="R7"
     R7=66,
-    //% block="R8"     
+    //% block="R8"
     R8=74,
     //% block="R9"
     R9=82
@@ -186,7 +190,7 @@ enum IRKEY {
 * Qbit initialization, please execute at boot time
 */
 //% weight=100 blockId=qbitInit block="Initialize Qbit"
-void qbitInit();
+void qbitInit(MicroBitMessageBus *bus, MicroBitSerial *serial, MicroBitIO *io);
 
 /**
 * Set Qbit run carrier mode
@@ -300,7 +304,7 @@ int getBatVoltage();
 * Resolve the Bluetooth that phone APP send command type, the total of nine types of commands: tank display command, servo debug command, obtaining the distance of ultrasonic command, obtaining temperature command, obtain sound size rank orders, to obtain the light level command, set the color lights command, honking command, firmware version information command.
 */
 //% weight=62 blockId=analyzeBluetoothCmd block="Get bluetooth command type %str"
-//% subcategory=Bluetooth 
+//% subcategory=Bluetooth
 int analyzeBluetoothCmd(ManagedString str);
 
 /**
@@ -308,49 +312,49 @@ int analyzeBluetoothCmd(ManagedString str);
 */
 //% weight=60  blockId=getArgs block="Get bluetooth command|%str|argument at %index"
 //% index.min=1 index.max=3
-//% subcategory=Bluetooth 
+//% subcategory=Bluetooth
 int getArgs(ManagedString str, int index);
 
 /**
 * Returns the enumeration of the command type, which can be compared with this module after obtaining the bluetooth command type sent by the mobile phone APP.
 */
 //% weight=58 blockId=getBluetoothCmdtype block="Bluetooth command type %type"
-//% subcategory=Bluetooth 
+//% subcategory=Bluetooth
 int getBluetoothCmdtype(CmdType type);
 
 /**
 * The command type of the tank is stop, go ahead, back, turn left, turn right, slow down, turn left slowly, turn right slowly.
 */
 //% weight=56 blockId=getRunCarType block="Car run type %type"
-//% subcategory=Bluetooth      
+//% subcategory=Bluetooth
 int getRunCarType(CarRunCmdType type);
 
 /**
 * The distance from the ultrasonic obstacle to the standard command, which is sent to the mobile phone. The APP will indicate the distance of the ultrasonic obstacle.
 */
 //% weight=54 blockId=convertUltrasonic block="Convert ultrasonic distance %data"
-//% subcategory=Bluetooth  
+//% subcategory=Bluetooth
 ManagedString convertUltrasonic(int data);
 
 /**
 * The conversion temperature value to standard command, sent to the mobile phone, and the APP displays the current temperature.
 */
 //% weight=52 blockId=convertTemperature block="Convert temperature %data"
-//% subcategory=Bluetooth  
+//% subcategory=Bluetooth
 ManagedString convertTemperature(int data);
 
 /**
 * Convert the light value to the standard command and send it to the mobile phone. The APP displays the current light level (0~255).
 */
 //% weight=50 blockId=convertLight block="Convert light %data"
-//% subcategory=Bluetooth  
+//% subcategory=Bluetooth
 ManagedString convertLight(int data);
 
 /**
 * Convert the battery value to the standard command and send it to the mobile phone. The APP displays the current voltage.
 */
 //% weight=48 blockId=convertBattery block="Convert battery %data"
-//% subcategory=Bluetooth  
+//% subcategory=Bluetooth
 ManagedString convertBattery(int data);
 
 }   // qbit
