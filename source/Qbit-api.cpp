@@ -108,7 +108,67 @@ static void onSerialDelimMatch(MicroBitEvent event)
 
     ManagedString charStr = uBit_serial->read(MICROBIT_SERIAL_DEFAULT_BUFFER_SIZE, ASYNC);
     handleCmd = handleCmd + charStr;
-    ;//TODO:
+    int index = findIndexof(handleCmd, "$", 0);
+    if (index != -1) {
+        ManagedString cmd = handleCmd.substring(0, index);
+        if (cmd.charAt(0) == 'C' && cmd.length() == 5)
+        {
+            int arg1Int = strToNumber(cmd.substring(1,1));
+            int arg2Int = strToNumber(cmd.substring(2,1));
+            int arg3Int = strToNumber(cmd.substring(3,2));
+            if (arg1Int != -1 && arg2Int != -1)
+            {
+                if (arg1Int == 0)
+                {
+                    obstacleSensor1 = true;
+                }
+                else
+                {
+                    obstacleSensor1 = false;
+                }
+
+                if (arg2Int == 0)
+                {
+                    obstacleSensor2 = true;
+                }
+                else
+                {
+                    obstacleSensor2 = false;
+                }
+            }
+            if (arg3Int != -1) {
+                if (arg3Int == 0) {
+                    if (adress != 0) {
+                        MicroBitEvent evt(MESSAGE_HEAD_STOP, 0, CREATE_AND_FIRE);
+                    }
+                    sendFlag = false;
+                    adress = 0;
+                }
+                else {
+                    if (adress != arg3Int) {
+                        if (!sendFlag) {
+                            MicroBitEvent evt(MESSAGE_HEAD, arg3Int, CREATE_AND_FIRE);
+                            sendFlag = true;
+                        }
+                        adress = arg3Int;
+                    }
+                }
+            }
+        }
+        if (cmd.charAt(0) == 'U' && cmd.length() == 5)
+        {
+            int argInt = decStrToNumber(cmd.substring(1, 4));
+            if (argInt != -1)
+            {
+                currentVoltage = argInt;
+            }
+        }
+        if (cmd.charAt(0) == 'V' && cmd.length() == 4)
+        {
+            versionFlag = true;
+        }
+    }
+    handleCmd = ManagedString::EmptyString;
 }
 
 int findIndexof(const ManagedString &src, const char *strFind, int startIndex)
