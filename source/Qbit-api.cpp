@@ -208,8 +208,8 @@ void setQbitRunSpeed(int speed, OrientionType oriention)
         0x55,
         0x04,
         0x32,//cmd type
-        speed,
-        oriention,
+        (uint8_t)speed,
+        (uint8_t)oriention,
     };
     if (uBit_serial)
         uBit_serial->send(buf, sizeof(buf), ASYNC);
@@ -327,7 +327,7 @@ void setQbitRun(QbitRunType runType)
         0x55,
         0x03,
         0x3C,//cmd type
-        runType,
+        (uint8_t)runType,
     };
     if (uBit_serial)
         uBit_serial->send(buf, sizeof(buf), ASYNC);
