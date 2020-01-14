@@ -32,12 +32,23 @@ int adress = 0;
 bool sendFlag = false;
 
 static void initRGBLight();
-static void onSerialDelimMatch(MicroBitEvent event);
+static void getHandleCmd();
 static void sendVersionCmd();
 int findIndexof(const ManagedString &src, const char *strFind, int startIndex);
 int strToNumber(const ManagedString &str);
 int decStrToNumber(const ManagedString &str);
 
+
+// Our version of forever_stub() from pxt-microbit/libs/core/codal.cpp:
+// https://github.com/microsoft/pxt-microbit/blob/3d5b6d43cc2f7dcd08fe8b80c49edaeee5c608a5/libs/core/codal.cpp#L98-L103
+static void forever_stub(void *a)
+{
+    while (true) {
+        void (*fn)() = (void (*)())a;
+        fn();
+        fiber_sleep(20);
+    }
+}
 
 /**
 * Qbit initialization, please execute at boot time
@@ -53,8 +64,7 @@ void qbitInit(MicroBitMessageBus *bus, MicroBitSerial *serial, MicroBitIO *io)
     {
         uBit_serial->baud(115200);  // This is the default baud-rate
         uBit_serial->redirect(MICROBIT_PIN_P12, MICROBIT_PIN_P8);
-        uBit_serial->eventOn("$");
-        uBit_messageBus->listen(MICROBIT_ID_SERIAL, MICROBIT_SERIAL_EVT_DELIM_MATCH, onSerialDelimMatch);
+        create_fiber(forever_stub, (void*)getHandleCmd);
     }
 
     fiber_sleep(1200);
@@ -102,7 +112,7 @@ static void sendVersionCmd()
 /**
 * Get the handle command.
 */
-static void onSerialDelimMatch(MicroBitEvent event)
+static void getHandleCmd()
 {
     static ManagedString handleCmd;
 
