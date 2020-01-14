@@ -493,7 +493,7 @@ int analyzeBluetoothCmd(ManagedString str)
 
         if (cmdHead == "CMD") {
             ManagedString cmdTypeStr = str.substring(4, 2);
-            int cmdType = strToNumber(cmdTypeStr);
+            int cmdType = decStrToNumber(cmdTypeStr);
             if (cmdType > CmdType_VERSION || cmdType < 0) {
                 return CmdType_NO_COMMAND;
             }
