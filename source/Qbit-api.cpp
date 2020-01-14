@@ -32,12 +32,22 @@ int adress = 0;
 bool sendFlag = false;
 
 static void initRGBLight();
-static void onSerialDelimMatch(MicroBitEvent event);
+static void getHandleCmd();
 static void sendVersionCmd();
-int findIndexof(const ManagedString &src, const char *strFind, int startIndex);
 int strToNumber(const ManagedString &str);
 int decStrToNumber(const ManagedString &str);
 
+
+// Our version of forever_stub() from pxt-microbit/libs/core/codal.cpp:
+// https://github.com/microsoft/pxt-microbit/blob/3d5b6d43cc2f7dcd08fe8b80c49edaeee5c608a5/libs/core/codal.cpp#L98-L103
+static void forever_stub(void *a)
+{
+    while (true) {
+        void (*fn)() = (void (*)())a;
+        fn();
+        fiber_sleep(20);
+    }
+}
 
 /**
 * Qbit initialization, please execute at boot time
@@ -53,8 +63,7 @@ void qbitInit(MicroBitMessageBus *bus, MicroBitSerial *serial, MicroBitIO *io)
     {
         uBit_serial->baud(115200);  // This is the default baud-rate
         uBit_serial->redirect(MICROBIT_PIN_P12, MICROBIT_PIN_P8);
-        uBit_serial->eventOn("$");
-        uBit_messageBus->listen(MICROBIT_ID_SERIAL, MICROBIT_SERIAL_EVT_DELIM_MATCH, onSerialDelimMatch);
+        create_fiber(forever_stub, (void*)getHandleCmd);
     }
 
     fiber_sleep(1200);
@@ -102,24 +111,67 @@ static void sendVersionCmd()
 /**
 * Get the handle command.
 */
-static void onSerialDelimMatch(MicroBitEvent event)
+static void getHandleCmd()
 {
-    static ManagedString handleCmd;
+    ManagedString cmd = uBit_serial->readUntil('$', SYNC_SLEEP);
+    if (cmd.length() > 0) {
+        if (cmd.charAt(0) == 'C' && cmd.length() == 5)
+        {
+            int arg1Int = strToNumber(cmd.substring(1,1));
+            int arg2Int = strToNumber(cmd.substring(2,1));
+            int arg3Int = strToNumber(cmd.substring(3,2));
+            if (arg1Int != -1 && arg2Int != -1)
+            {
+                if (arg1Int == 0)
+                {
+                    obstacleSensor1 = true;
+                }
+                else
+                {
+                    obstacleSensor1 = false;
+                }
 
-    ManagedString charStr = uBit_serial->read(MICROBIT_SERIAL_DEFAULT_BUFFER_SIZE, ASYNC);
-    handleCmd = handleCmd + charStr;
-    ;//TODO:
-}
-
-int findIndexof(const ManagedString &src, const char *strFind, int startIndex)
-{
-    if (src.length() < startIndex)
-        return -1;
-    const char *data = src.toCharArray();
-    const char *res = strstr(data + startIndex, strFind);
-    if (res)
-        return res - data;
-    return -1;
+                if (arg2Int == 0)
+                {
+                    obstacleSensor2 = true;
+                }
+                else
+                {
+                    obstacleSensor2 = false;
+                }
+            }
+            if (arg3Int != -1) {
+                if (arg3Int == 0) {
+                    if (adress != 0) {
+                        MicroBitEvent evt(MESSAGE_HEAD_STOP, 0, CREATE_AND_FIRE);
+                    }
+                    sendFlag = false;
+                    adress = 0;
+                }
+                else {
+                    if (adress != arg3Int) {
+                        if (!sendFlag) {
+                            MicroBitEvent evt(MESSAGE_HEAD, arg3Int, CREATE_AND_FIRE);
+                            sendFlag = true;
+                        }
+                        adress = arg3Int;
+                    }
+                }
+            }
+        }
+        if (cmd.charAt(0) == 'U' && cmd.length() == 5)
+        {
+            int argInt = decStrToNumber(cmd.substring(1, 4));
+            if (argInt != -1)
+            {
+                currentVoltage = argInt;
+            }
+        }
+        if (cmd.charAt(0) == 'V' && cmd.length() == 4)
+        {
+            versionFlag = true;
+        }
+    }
 }
 
 int strToNumber(const ManagedString &str)
@@ -156,8 +208,8 @@ void setQbitRunSpeed(int speed, OrientionType oriention)
         0x55,
         0x04,
         0x32,//cmd type
-        speed,
-        oriention,
+        (uint8_t)speed,
+        (uint8_t)oriention,
     };
     if (uBit_serial)
         uBit_serial->send(buf, sizeof(buf), ASYNC);
@@ -275,7 +327,7 @@ void setQbitRun(QbitRunType runType)
         0x55,
         0x03,
         0x3C,//cmd type
-        runType,
+        (uint8_t)runType,
     };
     if (uBit_serial)
         uBit_serial->send(buf, sizeof(buf), ASYNC);
@@ -441,7 +493,7 @@ int analyzeBluetoothCmd(ManagedString str)
 
         if (cmdHead == "CMD") {
             ManagedString cmdTypeStr = str.substring(4, 2);
-            int cmdType = strToNumber(cmdTypeStr);
+            int cmdType = decStrToNumber(cmdTypeStr);
             if (cmdType > CmdType_VERSION || cmdType < 0) {
                 return CmdType_NO_COMMAND;
             }
