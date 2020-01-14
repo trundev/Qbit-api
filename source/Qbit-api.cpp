@@ -34,7 +34,6 @@ bool sendFlag = false;
 static void initRGBLight();
 static void getHandleCmd();
 static void sendVersionCmd();
-int findIndexof(const ManagedString &src, const char *strFind, int startIndex);
 int strToNumber(const ManagedString &str);
 int decStrToNumber(const ManagedString &str);
 
@@ -114,13 +113,8 @@ static void sendVersionCmd()
 */
 static void getHandleCmd()
 {
-    static ManagedString handleCmd;
-
-    ManagedString charStr = uBit_serial->read(MICROBIT_SERIAL_DEFAULT_BUFFER_SIZE, ASYNC);
-    handleCmd = handleCmd + charStr;
-    int index = findIndexof(handleCmd, "$", 0);
-    if (index != -1) {
-        ManagedString cmd = handleCmd.substring(0, index);
+    ManagedString cmd = uBit_serial->readUntil('$', SYNC_SLEEP);
+    if (cmd.length() > 0) {
         if (cmd.charAt(0) == 'C' && cmd.length() == 5)
         {
             int arg1Int = strToNumber(cmd.substring(1,1));
@@ -178,18 +172,6 @@ static void getHandleCmd()
             versionFlag = true;
         }
     }
-    handleCmd = ManagedString::EmptyString;
-}
-
-int findIndexof(const ManagedString &src, const char *strFind, int startIndex)
-{
-    if (src.length() < startIndex)
-        return -1;
-    const char *data = src.toCharArray();
-    const char *res = strstr(data + startIndex, strFind);
-    if (res)
-        return res - data;
-    return -1;
 }
 
 int strToNumber(const ManagedString &str)
