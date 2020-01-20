@@ -627,4 +627,17 @@ ManagedString convertBattery(int data)
     return cmdStr;
 }
 
+/**
+ * Convert the version value to the standard command and send it to the mobile phone.
+ */
+//% weight=48 blockId=convertVersion block="Convert version %data"
+//% subcategory=Bluetooth  
+ManagedString convertVersion(int data)
+{
+    ManagedString cmdStr("CMD|10|");
+    cmdStr = cmdStr + ManagedString(data);
+    cmdStr = cmdStr + "|$";
+    return cmdStr;
+}
+
 }   // qbit

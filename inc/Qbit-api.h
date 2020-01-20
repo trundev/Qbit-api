@@ -357,6 +357,13 @@ ManagedString convertLight(int data);
 //% subcategory=Bluetooth
 ManagedString convertBattery(int data);
 
+/**
+ * Convert the version value to the standard command and send it to the mobile phone.
+ */
+//% weight=48 blockId=convertVersion block="Convert version %data"
+//% subcategory=Bluetooth  
+ManagedString convertVersion(int data);
+
 }   // qbit
 
 #endif // _QBIT_API_
